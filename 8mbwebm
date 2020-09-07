@@ -153,16 +153,16 @@ ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 2M -pass 2 -c:a libopus output.webm";
 	print( "$progname failed on ffmpeg\n"),exit if $ret;
 } elsif(1) {
 
-	print(".\n.\n.\nwarning:  x264 tends to crash on durations less than 2.5s\n continue?"),getc  if $ms < 2600;
+#	print(".\n.\n.\nwarning:  x264 tends to crash on durations less than 2.5s\n continue?"),getc  if $ms < 2600;
 my $comment = "You can add -movflags +faststart as an output option if your videos are going to be viewed in a browser. This will move some information to the beginning of your file and allow the video to begin playing before it is completely downloaded by the
 -preset slow
 ffmpeg -y -i input -c:v libx264 -b:v 2600k -pass 1 -an -f null /dev/null && \
 ffmpeg -i input -c:v libx264 -b:v 2600k -pass 2 -c:a aac -b:a 128k output.mp4";
 
 	$" = ' '; 
-	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner", "-i", $file, split " ", "-c:v libx264 -preset slow @size @ss @to -b:v $b_vp9 -pass 1 -an -f null /dev/null");
+	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner", "-i", $file, "-c:v", "libx264", "-movflags", "+faststart", "-preset",  "slow", @size, @ss, @to, "-b:v", $b_vp9, "-pass", "1", "-c:a", "libfdk_aac", "-b:a", "${\($b_opus * $k)}", $newfile);
 	($ret >> 8) or 
-	do { $ret=system(@e, "ffmpeg","-hide_banner",  "-i", $file, "-c:v","libx264","-movflags", "+faststart", "-preset","slow", @size, @ss, @to, "-b:v",$b_vp9,"-pass","2","-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile); $ret>>=8;}; 
+	do { $ret=system(@e, "ffmpeg","-hide_banner",  "-i", $file, "-c:v","libx264","-movflags", "+faststart", "-preset","slow", @size, @ss, @to, "-b:v",$b_vp9,"-pass","2","-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile, '-y'); $ret>>=8;}; 
 	print( "$progname failed on ffmpeg\n"),exit if $ret;
 	}
 elsif (0) {  # this was never useful on files that had bursts of high-bitrates.
