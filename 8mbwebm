@@ -2,6 +2,8 @@
 
 # ok i want an 8MB video file for output on discord.  so this is just another ffmpeg wrapper
 
+# vp9 is the default.  yes it is slow.
+# the program assumes you want 80-95kbps audio, then you pass the target size in megabytes (-m options) and it calcuates the streaming bit rate for the video.
 
 use Getopt::Long; 
 use v5.10; 
