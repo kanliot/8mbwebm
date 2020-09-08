@@ -146,13 +146,16 @@ sub setlog {
 }
 
 for my $file (@ARGV) { 
-	setlog $file;
 	my $ms = callmediainfov2 $file, 'General', 'Duration';
-	 say("$progname fatal error: couldn't get duration of $file"), exit  unless $ms ;
+	say("$progname fatal error: couldn't get duration of $file"), exit 1 unless $ms ;
+	setlog $file;
 	if ( $ss and $to ) { # try and adjust bitrate from "times" given.
 		$ms =  to_seconds_conditional($to) *1000 - to_seconds_conditional($ss) *1000; 
 	} elsif ($ss) {  
 		$ms = $ms - to_seconds_conditional($ss) *1000; 
+	} elsif($to) {  
+		my $choptime = $ms - to_seconds_conditional($to) *1000;
+		$ms = $ms - $choptime; 
 	}
 	my $b_opus = 80;  $b_opus = 95 if $h264; 
 	my $bits_remainder = $eight - ($b_opus * $k * $ms /1000);
