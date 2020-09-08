@@ -12,7 +12,7 @@ use strict;use warnings;
 
 =head1 SYNOPSIS
 
-8mbwebm.pl [opts] [-o outfile] infile
+8mbwebm [options] inputfile...
 
  Options:
    -h, -help            brief help message
@@ -20,14 +20,11 @@ use strict;use warnings;
    -ss 			start time
    -to 			end time
    -s			new size like: 640x480
-   -o 			not working
    -m 			change size in megabytes for output file
    -264, -2 		output in mp4 (aac + H.264) 
   			     ( libx264 + libfdk_aac in ffmpeg) 
    -d 			specify output directory instead of dir of file
 default -codec is opus + vp9  ( libvpx-vp9, libopus in ffmpeg) 
-
-
 
 =cut
 

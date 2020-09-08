@@ -10,7 +10,7 @@ You can also clip segments from the source video.
 The main use case is if you want a video shrunk down, and all you know is the size in megabytes of the output file.
 
 
-    8mbwebm.pl [opts] [-o outfile] infile
+    8mbwebm [options] inputfile...
 
      Options:
        -h, -help            brief help message
@@ -18,7 +18,6 @@ The main use case is if you want a video shrunk down, and all you know is the si
        -ss 			start time
        -to 			end time
        -s			new size like: 640x480
-       -o 			not working
        -m 			change size in megabytes for output file
        -264, -2 		output in mp4 (aac + H.264) 
       			     ( libx264 + libfdk_aac in ffmpeg) 
