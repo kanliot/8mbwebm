@@ -74,17 +74,26 @@ sub count_lines_in_string {
 }
 #:enew
 #:r !mediainfo --Info-Parameters
+sub quoteforshell {  #adds single quotes i guess it could work like bash's printf %q
+# doesn't relly return an array, just a single string
+# so you pass multiarguments, and it quotes each one, separated by a space.
+#s///gr is return sub, but leave orig untouched
+  return join ' ', map
+      "'" . s/'/'\\''/gr . "'", @_;
+}
+
 sub callmediainfov2   {  # uh prototypes suck
 	my $file  = shift; 
 	my $group  = shift; # like General
 	my $field  = shift;
+	$file = quoteforshell $file; 
 	if ($field) {
-		$_ = `mediainfo   --Inform="$group;%$field%"  "$file" `;
+		$_ = `mediainfo   --Inform="$group;%$field%"  $file `;
 	} else {
 		$_ = `mediainfo   --Inform="$group;"  "$file" `;
 	}
 	my $numlines = count_lines_in_string $_; 
-	die 'too many lines mediainfo'. "$file $group $field"  if $numlines> 1 ; 
+	die 'too many lines mediainfo'. "$file $group $field"  if $numlines> 1; 
 
 	chomp;$_}
 sub callmediainfov :prototype($$)  {  # uh prototypes suck
