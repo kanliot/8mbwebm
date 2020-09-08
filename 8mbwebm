@@ -23,6 +23,7 @@ use strict;use warnings;
    -to 			end time
    -s			new size like: 640x480
    -m 			change size in megabytes for output file
+   -f 			go fast. ( -fast selects x264 )
    -264, -2 		output in mp4 (aac + H.264) 
   			     ( libx264 + libfdk_aac in ffmpeg) 
    -d 			specify output directory instead of dir of file
@@ -42,9 +43,10 @@ my $size ;
 my $megabytes=8;
 my $h264; 
 my $outdir; 
+my $preset='slow';
 
 my ($ss, $to);
-GetOptions ('d=s',\$outdir,'h264',\$h264,'x264',\$h264,  '2',\$h264, '264', \$h264, 'm=f', \$megabytes, 'ss=s', \$ss, 'to=s',\$to, 's=s', \$size,  'r',\$realtime, 'p=s',\$prefix, 'o=s',\$outname, 'h', \$help,'help', \$help) || do { print STDERR "$0 found invalid option\n";exit 1};
+GetOptions ('-fast',\$preset, 'f', \$preset, 'd=s',\$outdir,'h264',\$h264,'x264',\$h264,  '2',\$h264, '264', \$h264, 'm=f', \$megabytes, 'ss=s', \$ss, 'to=s',\$to, 's=s', \$size,  'r',\$realtime, 'p=s',\$prefix, 'o=s',\$outname, 'h', \$help,'help', \$help) || do { print STDERR "$0 found invalid option\n";exit 1};
 
 say("$progname. Convert any video file to an 8MB .webm"),  Getopt::Long::HelpMessage if $help;
 sub check_exists_command { 
@@ -56,6 +58,9 @@ check_exists_command 'mediainfo' or die "$0 requires mediainfo";
 
 @realtime = () if !$realtime;
 my $multi_pass = !scalar@realtime;
+
+$h264 = 1 if $preset ne 'slow';  # setting preset always implies x264 mode. 
+$preset = 'fast' if $preset eq "1";
 
 my @size = ( '-s', $size); @size = () unless $size;
 my @ss  =  ('-ss', $ss); @ss = () unless $ss;
@@ -168,9 +173,9 @@ ffmpeg -y -i input -c:v libx264 -b:v 2600k -pass 1 -an -f null /dev/null && \
 ffmpeg -i input -c:v libx264 -b:v 2600k -pass 2 -c:a aac -b:a 128k output.mp4";
 
 	$" = ' '; 
-	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner", "-i", $file, "-c:v", "libx264", "-movflags", "+faststart", "-preset",  "slow", @size, @ss, @to, "-b:v", $b_vp9, "-pass", "1", "-c:a", "libfdk_aac", "-b:a", "${\($b_opus * $k)}", $newfile);
+	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner", "-i", $file, "-c:v", "libx264", "-movflags", "+faststart", "-preset",  $preset, @size, @ss, @to, "-b:v", $b_vp9, "-pass", "1", "-c:a", "libfdk_aac", "-b:a", "${\($b_opus * $k)}", $newfile);
 	($ret >> 8) or 
-	do { $ret=system(@e, "ffmpeg","-hide_banner",  "-i", $file, "-c:v","libx264","-movflags", "+faststart", "-preset","slow", @size, @ss, @to, "-b:v",$b_vp9,"-pass","2","-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile, '-y'); $ret>>=8;}; 
+	do { $ret=system(@e, "ffmpeg","-hide_banner",  "-i", $file, "-c:v","libx264","-movflags", "+faststart", "-preset",$preset, @size, @ss, @to, "-b:v",$b_vp9,"-pass","2","-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile, '-y'); $ret>>=8;}; 
 	print( "$progname failed on ffmpeg\n"),exit if $ret;
 	}
 elsif (0) {  # this was never useful on files that had bursts of high-bitrates.
