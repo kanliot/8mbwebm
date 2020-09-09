@@ -7,7 +7,6 @@
 
 use Getopt::Long; 
 use v5.10; 
-#use DDP; sub pp { p @_ };
 use strict;use warnings;
 
 
@@ -27,6 +26,10 @@ use strict;use warnings;
    -264, -2 		output in mp4 (aac + H.264) 
   			     ( libx264 + libfdk_aac in ffmpeg) 
    -d 			specify output directory instead of dir of file
+   -mono		downmix to output mono.
+   -get-fps 		print FPS and exit
+   -lower-fps 		reduce FPS by a ratio like 3:2
+   			e.g. to reduce 25%, use: -lower-fps '4:3' 
 default -codec is opus + vp9  ( libvpx-vp9, libopus in ffmpeg) 
 
 =cut
@@ -44,9 +47,12 @@ my $megabytes=8;
 my $h264; 
 my $outdir; 
 my $preset='slow';
+my $mono;
+my $get_fps; 
+my $lower_fps;
 
 my ($ss, $to);
-GetOptions ('-fast',\$preset, 'f', \$preset, 'd=s',\$outdir,'h264',\$h264,'x264',\$h264,  '2',\$h264, '264', \$h264, 'm=f', \$megabytes, 'ss=s', \$ss, 'to=s',\$to, 's=s', \$size,  'r',\$realtime, 'p=s',\$prefix, 'o=s',\$outname, 'h', \$help,'help', \$help) || do { print STDERR "$0 found invalid option\n";exit 1};
+GetOptions ('lower-fps=s',\$lower_fps, 'get-fps',\$get_fps, '-mono',\$mono, '-fast',\$preset, 'f', \$preset, 'd=s',\$outdir,'h264',\$h264,'x264',\$h264,  '2',\$h264, '264', \$h264, 'm=f', \$megabytes, 'ss=s', \$ss, 'to=s',\$to, 's=s', \$size,  'p=s',\$prefix, 'o=s',\$outname, 'h', \$help,'help', \$help) || do { print STDERR "$0 found invalid option\n";exit 1};
 
 say("$progname. Convert any video file to an 8MB .webm"),  Getopt::Long::HelpMessage if $help;
 sub check_exists_command { 
@@ -65,9 +71,11 @@ $preset = 'fast' if $preset eq "1";
 my @size = ( '-s', $size); @size = () unless $size;
 my @ss  =  ('-ss', $ss); @ss = () unless $ss;
 my @to =   ('-to', $to); @to = () unless $to; 
+my @mono =   ('-ac', 1); @mono = () unless $mono; 
 
 die 'not a directory' if $outdir and ! -d $outdir;
 die 'directory not writable' if $outdir and ! -w $outdir;
+
 
 sub count_lines_in_string { 
 	$_ = shift;
@@ -100,6 +108,14 @@ sub callmediainfov2   {  # uh prototypes suck
 	die 'too many lines mediainfo'. "$file $group $field"  if $numlines> 1; 
 
 	chomp;$_}
+if ($get_fps) {
+	for my $file (@ARGV) { 
+# should probably be single lines without any filenames.  I can see how people could use this to programatically get FPS or resolution. 
+		say "$file: ${\callmediainfov2 $file,'General','FrameRate/String'}" ;
+	}
+	say 'normal exit.'; exit;
+	say "$_: " for @ARGV; say 'normal exit.'; exit;
+}
 sub callmediainfov :prototype($$)  {  # uh prototypes suck
 	$a=shift;
 	$b=shift;
@@ -131,6 +147,17 @@ sub to_seconds_conditional {
 	return $_;
 }
 
+#use DDP; sub pp { p @_ };
+# this whole thing, validate the option looks like '4:3' or '3:4'
+# then turn $lower_fps into a floating point number. 
+if ($lower_fps) {
+	my @num = sort { $a <=> $b} ($lower_fps =~  /(.*):(.*)/g);
+	use Scalar::Util 'looks_like_number'; 
+	( looks_like_number($_) or die 'found a non-number on option -lower-fps ') for @num;	
+	die 'ratio not found on option -lower-fps' if $#num != 1; 
+	$lower_fps = $num[0] / $num[1]; 
+}
+
 # setup a filename for temporary file for ffmpegs -passlogfile
 our $logfile; 
 # cleanup passlogfile if it was set. 
@@ -144,10 +171,20 @@ sub setlog {
 	$tempdir = '.' if $tempdir eq "";
 	$logfile = File::Temp::tempnam($tempdir , '8mbwebm_temp_'); 
 }
+my @mux_fix = split ' ', '-max_muxing_queue_size 9999';
 
 for my $file (@ARGV) { 
+	my (@fps);
 	my $ms = callmediainfov2 $file, 'General', 'Duration';
 	say("$progname fatal error: couldn't get duration of $file"), exit 1 unless $ms ;
+
+	if($lower_fps) {
+		my $fps = callmediainfov2 $file, 'General', 'FrameRate';
+		say("$progname fatal error: couldn't get FPS of $file"), exit 1 unless $fps ;
+		$fps *= $lower_fps;
+		@fps = ( '-r', $fps);
+	}
+
 	setlog $file;
 	if ( $ss and $to ) { # try and adjust bitrate from "times" given.
 		$ms =  to_seconds_conditional($to) *1000 - to_seconds_conditional($ss) *1000; 
@@ -178,9 +215,9 @@ my $comment = "	 For two-pass targeting an average bitrate, the target bitrate i
 ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 2M -pass 1 -an -f null /dev/null && \
 ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 2M -pass 2 -c:a libopus output.webm";
 	$" = ' '; 
-	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner", "-i", $file,'-passlogfile',$logfile, split " ", "-c:v libvpx-vp9 @size @ss @to -b:v $b_vp9 -pass 1 -an -f null /dev/null");
+	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner", "-i", $file,'-passlogfile',$logfile, split " ", "-c:v libvpx-vp9 @fps @size @ss @to -b:v $b_vp9 -pass 1 -an -f null /dev/null");
 	($ret >> 8) or 
-	do { $ret=system(@e, "ffmpeg","-hide_banner", "-i", $file, '-passlogfile',$logfile, "-c:v","libvpx-vp9",@realtime, @size, @ss, @to, "-b:v",$b_vp9,"-pass","2","-c:a","libopus","-b:a","${\($b_opus * $k)}", $newfile); $ret>>=8;}; 
+	do { $ret=system(@e, "ffmpeg","-hide_banner", "-i", $file, '-passlogfile',$logfile, "-c:v","libvpx-vp9",@realtime, @fps, @mono, @size, @ss, @to, "-b:v",$b_vp9,"-pass","2","-c:a","libopus","-b:a","${\($b_opus * $k)}", $newfile); $ret>>=8;}; 
 	print( "$progname failed on ffmpeg\n"),exit if $ret;
 } elsif(1) {
 
@@ -190,10 +227,9 @@ my $comment = "You can add -movflags +faststart as an output option if your vide
 ffmpeg -y -i input -c:v libx264 -b:v 2600k -pass 1 -an -f null /dev/null && \
 ffmpeg -i input -c:v libx264 -b:v 2600k -pass 2 -c:a aac -b:a 128k output.mp4";
 
-	$" = ' '; 
-	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner","-i", $file, '-passlogfile',$logfile, "-c:v", "libx264", "-movflags", "+faststart", "-preset",  $preset, @size, @ss, @to, "-b:v", $b_vp9, "-pass", "1", "-c:a", "libfdk_aac", "-b:a", "${\($b_opus * $k)}", $newfile);
+	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner","-i", $file, '-passlogfile',$logfile,@mux_fix, "-c:v", "libx264", "-movflags", "+faststart", "-preset",  $preset, @fps, @size, @ss, @to, "-b:v", $b_vp9, "-pass", "1", @mono, "-c:a", "libfdk_aac", "-b:a", "${\($b_opus * $k)}", $newfile);
 	($ret >> 8) or 
-	do { $ret=system(@e, "ffmpeg","-hide_banner", "-i", $file, '-passlogfile',$logfile, "-c:v","libx264","-movflags", "+faststart", "-preset",$preset, @size, @ss, @to, "-b:v",$b_vp9,"-pass","2","-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile, '-y'); $ret>>=8;}; 
+	do { $ret=system(@e, "ffmpeg","-hide_banner", "-i", $file, '-passlogfile',$logfile, @mux_fix, "-c:v","libx264","-movflags", "+faststart", "-preset",$preset, @fps, @size, @ss, @to, "-b:v",$b_vp9,"-pass","2",@mono, "-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile, '-y'); $ret>>=8;}; 
 	print( "$progname failed on ffmpeg\n"),exit if $ret;
 	}
 elsif (0) {  # this was never useful on files that had bursts of high-bitrates.
