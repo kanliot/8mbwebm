@@ -12,7 +12,7 @@ The main use case is if you want a video shrunk down, and all you know is the si
 ##### Main Options
  *  Fast mode with -f
  *  New size in megabytes with -m
- *  H.264 mode with -2
+ *  .mp4 (H.264) mode with -2
  *  New size in pixels with -s
  *   Clip from time #1 to time #2 with -ss and -to
     
