@@ -37,7 +37,7 @@ default -codec is opus + vp9  ( libvpx-vp9, libopus in ffmpeg)
 =cut
 
 
-my $progname = '8mbwebm.pl';
+my $progname = '8mbwebm';
 use Getopt::Long;
 my $help;
 my $outname;
