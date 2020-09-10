@@ -20,7 +20,9 @@ use strict;use warnings;
    -p			set prefix. "8MB_" is the default.
    -ss 			start time
    -to 			end time
-   -s			new size like: 640x480
+   -s			new size like: 640x480 (WIDTHxHEIGHT)
+   			    if you like, you can omit one of the 
+			    dimensions, like -s 640x or -s x480 
    -m 			change size in megabytes for output file
    -f 			go fast. ( -fast selects x264 )
    -264, -2 		output in mp4 (aac + H.264) 
@@ -61,6 +63,7 @@ sub check_exists_command {
 }
 check_exists_command 'ffmpeg' or die "$0 requires ffmpeg";
 check_exists_command 'mediainfo' or die "$0 requires mediainfo";
+# hmm ffprobe https://superuser.com/questions/841235/how-do-i-use-ffmpeg-to-get-the-video-resolution
 
 @realtime = () if !$realtime;
 my $multi_pass = !scalar@realtime;
@@ -68,7 +71,6 @@ my $multi_pass = !scalar@realtime;
 $h264 = 1 if $preset ne 'slow';  # setting preset always implies x264 mode. 
 $preset = 'fast' if $preset eq "1";
 
-my @size = ( '-s', $size); @size = () unless $size;
 my @ss  =  ('-ss', $ss); @ss = () unless $ss;
 my @to =   ('-to', $to); @to = () unless $to; 
 my @mono =   ('-ac', 1); @mono = () unless $mono; 
@@ -92,6 +94,21 @@ sub quoteforshell {  #adds single quotes i guess it could work like bash's print
 #s///gr is return sub, but leave orig untouched
   return join ' ', map
       "'" . s/'/'\\''/gr . "'", @_;
+}
+sub callmediainfov3 { # can return multiple thingies.
+	# basically ( file, group, fields...) 
+	my $file  = shift; 
+	my $group = shift; 
+	my $field;
+	my $query;
+"For Multiple stream kind, you can't use the command line directly (\nVideo is recognized as the continuity of the General definition, with a line break in the general stream info)"//0; # this means, to get one info from General, then one from video, you'd have to create a temp file, or call mediainfo several times. 
+	$query = "$group;";
+	while( $field = shift) {
+		$query .="%$field%\\n"; 
+	}
+	$file = quoteforshell $file; 
+	my $res = `mediainfo --Inform="$query" $file`;
+	return split "\n", $res;
 }
 
 sub callmediainfov2   {  # uh prototypes suck
@@ -121,7 +138,7 @@ sub callmediainfov :prototype($$)  {  # uh prototypes suck
 	$b=shift;
 	$_ = `mediainfo   --Inform="Video;%$b%"  "$a" `;chomp;$_}
 sub mb () { 2 ** 20}
-my $eight = int $megabytes *mb /1.027; # .4% container overhead webm
+my $eight = int $megabytes *mb /( 1.027 + .011) ; # .4% container overhead webm
 $eight *= 8; 
 my $k = 1000;  # ffmpeg kbps is 1000, not 1024
 
@@ -147,7 +164,6 @@ sub to_seconds_conditional {
 	return $_;
 }
 
-#use DDP; sub pp { p @_ };
 # this whole thing, validate the option looks like '4:3' or '3:4'
 # then turn $lower_fps into a floating point number. 
 if ($lower_fps) {
@@ -185,6 +201,35 @@ for my $file (@ARGV) {
 		@fps = ( '-r', $fps);
 	}
 
+#	use DDP; sub pp { p @_ };
+	my @e = 'commandline.pl'; @e = (); 
+# handle partial size like x480 or 640x 
+	if ( $size and ! scalar $size =~ /\d+\D\d+/) {
+		my @p_size = callmediainfov3 $file, 'Video',"Height","Width" ;    
+		if(2 != @p_size) { 
+			say STDERR "couldn't get height, width of $file\n$progname fatal error.";exit 1; 
+		}
+		my ($height,$width) = @p_size;
+		sub make_divisible_by2 {
+			my $n_width = shift;
+			$n_width = int ( ($n_width /2 ) + .5 ); # fix error where width is odd number
+			return $n_width * 2;
+		}
+		# we have both sizes, so correct the size by using the -size string from the arguments as a partial size
+		if ($size =~ /(\d+)\D/) {  # right missing.  make new height
+			my $p_width= $1; 
+			my $ratio = $p_width / $width; 
+			$size = "${p_width}x" . make_divisible_by2 $height * $ratio;
+		} elsif ($size =~ /\D(\d+)/) { # left missing make new width
+			my $p_height = $1; 
+			my $ratio = $p_height / $height; 
+			$size =  make_divisible_by2($width * $ratio) . "x${p_height}" ;
+		} else { 
+			die "$progname error bad size in pixels passed to -s"; 
+		}
+	}
+	my @size = ( '-s', $size); @size = () unless $size;
+
 	setlog $file;
 	if ( $ss and $to ) { # try and adjust bitrate from "times" given.
 		$ms =  to_seconds_conditional($to) *1000 - to_seconds_conditional($ss) *1000; 
@@ -197,7 +242,10 @@ for my $file (@ARGV) {
 	my $b_opus = 80;  $b_opus = 95 if $h264; 
 	my $bits_remainder = $eight - ($b_opus * $k * $ms /1000);
 	my $b_vp9  = $bits_remainder / ( $ms /1000) ;
-	my @e = 'commandline.pl'; @e = (); 
+	if (31000 > $b_vp9 ) {
+		say "$progname non-fatal error while trying to encode $file\nGiven size of $megabytes MiB, and assuming " . ($h264 ? "$b_opus kbps for AAC":"$b_opus kpbs for opus")  . ", only $b_vp9 bps were left for video, which isn't enough. (minimum of 31000)."; 
+		next; 
+	}
 	use File::Spec::Functions "splitpath";
 	my          $newfile  =  "$outdir/". $prefix. (splitpath $file)[2] if $outdir;
 	$newfile  =  ( splitpath $file)[1] . $prefix. (splitpath $file)[2] unless $outdir;
