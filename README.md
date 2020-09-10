@@ -38,4 +38,4 @@ The main use case is if you want a video shrunk down, and all you know is the si
          			e.g. to reduce 25%, use: -lower-fps '4:3' 
     default -codec is opus + vp9  ( libvpx-vp9, libopus in ffmpeg) `
 
-**8mbwebm** requires perl.  Should work on \*nix and OSX when ffmpeg and mediainfo are installed.
+**8mbwebm** is a single perl script with no 'dependencies'.  Should work on BSD, Linux and OSX when ffmpeg and mediainfo are installed.
