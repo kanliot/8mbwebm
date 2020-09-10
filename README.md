@@ -9,6 +9,13 @@ If you don't want the default output, you can change the output size, the codec,
 You can also clip segments from the source video.    
 The main use case is if you want a video shrunk down, and all you know is the size in megabytes of the output file.
 
+##### Main Options
+ *  Fast mode with -f
+ *  New size in megabytes with -m
+ *  H.264 mode with -2
+ *  New size in pixels with -s
+ *   Clip from time #1 to time #2 with -ss and -to
+    
 
     8mbwebm [options] inputfile...
 
