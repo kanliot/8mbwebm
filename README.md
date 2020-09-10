@@ -23,9 +23,9 @@ The main use case is if you want a video shrunk down, and all you know is the si
        -m 			change size in megabytes for output file
        -f 			go fast. ( -fast selects x264 )
        -264, -2 		output in mp4 (aac + H.264) 
-      				     ( libx264 + libfdk_aac in ffmpeg) 
+      			     ( libx264 + libfdk_aac in ffmpeg) 
        -d 			specify output directory instead of dir of file
-       -mono			downmix to output mono.
+       -mono		downmix to output mono.
        -get-fps 		print FPS and exit
        -lower-fps 		reduce FPS by a ratio like 3:2
          			e.g. to reduce 25%, use: -lower-fps '4:3' 
