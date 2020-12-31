@@ -13,7 +13,7 @@ The main use case is if you want a video shrunk down, and all you know is the si
 I've added a redo mode.  really, 8mbwebm was producing outsized files about 20% of the time.  It currently calculates bitrate as a percent %, but perhaps it should just subtract 600K from the target size, and use that bitrate as a percent.    
 Anyhow, the redo mode is easy to use.  This program asks you if you want to redo,just enter "y". 
 
-I've also decided to get rid of VP9, and try and make it transparent to systems without lib_fdk and mediainfo installed.   x265 support makes much more sense, and it seems a little bit faster on my system.   
+I've also decided that my future work on this is to get rid of VP9, and try and make it transparent to systems without lib_fdk and mediainfo installed.   x265 support makes much more sense, and it seems a little bit faster on my system.   Check back in 2-3 months!
 
 ##### Main Options
  *  Fast mode with -f
