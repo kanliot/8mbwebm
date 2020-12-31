@@ -5,6 +5,13 @@
 # vp9 is the default.  yes it is slow.
 # the program assumes you want 80-95kbps audio, then you pass the target size in megabytes (-m options) and it calcuates the streaming bit rate for the video.
 
+
+# alt for metadata:
+# https://metacpan.org/release/FFprobe/source/lib/FFprobe.pm
+
+#   This script scales an input video to be the duration provided.  https://gist.github.com/Wollw/3943863
+
+
 use Getopt::Long; 
 use v5.10; 
 use strict;use warnings;
@@ -54,7 +61,7 @@ my $get_fps;
 my $lower_fps;
 
 my ($ss, $to);
-GetOptions ('lower-fps=s',\$lower_fps, 'get-fps',\$get_fps, '-mono',\$mono, '-fast',\$preset, 'f', \$preset, 'd=s',\$outdir,'h264',\$h264,'x264',\$h264,  '2',\$h264, '264', \$h264, 'm=f', \$megabytes, 'ss=s', \$ss, 'to=s',\$to, 's=s', \$size,  'p=s',\$prefix, 'o=s',\$outname, 'h', \$help,'help', \$help) || do { print STDERR "$0 found invalid option\n";exit 1};
+GetOptions ('lower-fps=s',\$lower_fps, 'get-fps',\$get_fps, '-mono',\$mono, '-fast',\$preset, 'f', \$preset, 'd=s',\$outdir,'h264',\$h264,'x264',\$h264,  '2',\$h264, '264', \$h264, 'm=f', \$megabytes, 'ss=s', \$ss, 'to=s',\$to, 'size=s',\$size, 's=s', \$size,  'p=s',\$prefix, 'o=s',\$outname, 'h', \$help,'help', \$help) || do { print STDERR "$0 found invalid option\n";exit 1};
 
 say("$progname. Convert any video file to an 8MB .webm"),  Getopt::Long::HelpMessage if $help;
 sub check_exists_command { 
@@ -138,7 +145,9 @@ sub callmediainfov :prototype($$)  {  # uh prototypes suck
 	$b=shift;
 	$_ = `mediainfo   --Inform="Video;%$b%"  "$a" `;chomp;$_}
 sub mb () { 2 ** 20}
-my $eight = int $megabytes *mb /( 1.027 + .011) ; # .4% container overhead webm
+my $inflation= (1.027 + .011);  # .4% container overhead webm
+REDO:
+my $eight = int($megabytes *mb / $inflation) ;  # divide... so target is smaller 
 $eight *= 8; 
 my $k = 1000;  # ffmpeg kbps is 1000, not 1024
 
@@ -177,7 +186,8 @@ if ($lower_fps) {
 # setup a filename for temporary file for ffmpegs -passlogfile
 our $logfile; 
 # cleanup passlogfile if it was set. 
-END { unlink $h264? ("$logfile-0.log.mbtree","$logfile-0.log") :"$logfile-0.log"  if $logfile; };
+sub clenup { unlink $h264? ("$logfile-0.log.mbtree","$logfile-0.log") :"$logfile-0.log"  if $logfile; }
+END { clenup };  
 sub setlog {
 	unlink $h264?  ("$logfile-0.log.mbtree","$logfile-0.log") :"$logfile-0.log"  if $logfile && -e $logfile; # output dir can change, so cleanup on every call. 
 	my $file = shift;
@@ -275,9 +285,13 @@ my $comment = "You can add -movflags +faststart as an output option if your vide
 ffmpeg -y -i input -c:v libx264 -b:v 2600k -pass 1 -an -f null /dev/null && \
 ffmpeg -i input -c:v libx264 -b:v 2600k -pass 2 -c:a aac -b:a 128k output.mp4";
 
-	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner","-i", $file, '-passlogfile',$logfile,@mux_fix, "-c:v", "libx264", "-movflags", "+faststart", "-preset",  $preset, @fps, @size, @ss, @to, "-b:v", $b_vp9, "-pass", "1", @mono, "-c:a", "libfdk_aac", "-b:a", "${\($b_opus * $k)}", $newfile);
+# not what i want:.  "0:a:m:language:eng"
+# 0:a:m:default is added because ffmpeg seems to select audio streams with the most channels, or streams or etc. see https://ffmpeg.org/ffmpeg.html#Stream-selection
+# yes. seems to make stream mapping dumber. now it's trying to pass mjpeg streams to out, 
+# ^^^^^^^ ok fixed it with 0:v:m:default
+	my $ret; $ret = system ( @e ,"ffmpeg","-hide_banner","-i", $file, '-passlogfile',$logfile, "-map","0:v:m:default","-map","0:a:m:default",@mux_fix, "-c:v", "libx264", "-movflags", "+faststart", "-preset",  $preset, @fps, @size, @ss, @to, "-b:v", $b_vp9, "-pass", "1", @mono, "-c:a", "libfdk_aac", "-b:a", "${\($b_opus * $k)}", $newfile);
 	($ret >> 8) or 
-	do { $ret=system(@e, "ffmpeg","-hide_banner", "-i", $file, '-passlogfile',$logfile, @mux_fix, "-c:v","libx264","-movflags", "+faststart", "-preset",$preset, @fps, @size, @ss, @to, "-b:v",$b_vp9,"-pass","2",@mono, "-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile, '-y'); $ret>>=8;}; 
+	do { $ret=system(@e, "ffmpeg","-hide_banner", "-i", $file, '-passlogfile',$logfile,  "-map","0:v:m:default","-map","0:a:m:default",@mux_fix, "-c:v","libx264","-movflags", "+faststart", "-preset",$preset, @fps, @size, @ss, @to, "-b:v",$b_vp9,"-pass","2",@mono, "-c:a","libfdk_aac","-b:a","${\($b_opus * $k)}", $newfile, '-y'); $ret>>=8;}; 
 	print( "$progname failed on ffmpeg\n"),exit if $ret;
 	}
 elsif (0) {  # this was never useful on files that had bursts of high-bitrates.
@@ -286,8 +300,20 @@ elsif (0) {  # this was never useful on files that had bursts of high-bitrates.
 	system @e, "ffmpeg","-hide_banner",  "-i", $file, "-c:v","libvpx-vp9",@realtime,"-b:v",$b_vp9,"-c:a","libopus","-b:a","${\($b_opus * $k)}", $newfile=~s/\.mp4$/\.webm/r;
 }
 	say "---- Completed OK ----";
+	say $h264 ? "target bitrate was x264:$b_vp9 Kbps aac:$b_opus Kbps":"target bitrate was vp9:$b_vp9 Kbps opus:$b_opus Kbps";
 	say "output file $newfile\nhas a size of ${\( (-s $newfile)/mb)} MB";
 	$b_vp9 = int $b_vp9/1000;
-	say $h264 ? "target bitrate was x264:$b_vp9 Kbps aac:$b_opus Kbps":"target bitrate was vp9:$b_vp9 Kbps opus:$b_opus Kbps";
 	`bep` if check_exists_command 'bep';
+	my $newsize = -s $newfile; 
+	if (($newsize / mb) > $megabytes) { 
+		print "$megabytes MB was specified but this size was exceeded!\n";
+		print 'redo file with 1% larger margin for extra size? ';
+		$_= readline STDIN; 
+		if(/[yY]/) {  
+			unlink $newfile; 
+			clenup; 
+			$inflation *= $inflation * (1 + 1/100); #1% 
+			goto REDO
+		}
+	}
 }

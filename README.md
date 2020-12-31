@@ -9,6 +9,12 @@ If you don't want the default output, you can change the output size, the codec,
 You can also clip segments from the source video.    
 The main use case is if you want a video shrunk down, and all you know is the size in megabytes of the output file.
 
+**December 2020**    
+I've added a redo mode.  really, 8mbwebm was producing outsized files about 20% of the time.  It currently calculates bitrate as a percent %, but perhaps it should just subtract 600K from the target size, and use that bitrate as a percent.    
+Anyhow, the redo mode is easy to use.  This program asks you if you want to redo,just enter "y". 
+
+I've also decided to get rid of VP9, and try and make it transparent to systems without lib_fdk and mediainfo installed.   x265 support makes much more sense, and it seems a little bit faster on my system.   
+
 ##### Main Options
  *  Fast mode with -f
  *  New size in megabytes with -m
