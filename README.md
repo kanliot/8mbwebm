@@ -42,6 +42,7 @@ I've also decided to get rid of VP9, and try and make it transparent to systems 
        -get-fps 		print FPS and exit
        -lower-fps 		reduce FPS by a ratio like 3:2
          			e.g. to reduce 25%, use: -lower-fps '4:3' 
+       -get-duration        print duration in SSSS.ms for each video and exit
     default -codec is opus + vp9  ( libvpx-vp9, libopus in ffmpeg) `
 
 **8mbwebm** is a single script with no 'dependencies'.  Should work on BSD, Linux and OSX when [ffmpeg](https://repology.org/project/ffmpeg/versions) and [mediainfo](https://repology.org/project/mediainfo/versions) are installed.
