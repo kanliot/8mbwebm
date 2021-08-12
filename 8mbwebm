@@ -307,7 +307,7 @@ elsif (0) {  # this was never useful on files that had bursts of high-bitrates.
 	system @e, "ffmpeg","-hide_banner",  "-i", $file, "-c:v","libvpx-vp9",@realtime,"-b:v",$b_vp9,"-c:a","libopus","-b:a","${\($b_opus * $k)}", $newfile=~s/\.mp4$/\.webm/r;
 }
 	say "---- Completed OK ----";
-	say $h264 ? "target bitrate was x264:${\int $b_vp9} Kbps, aac:$b_opus Kbps":"target bitrate was vp9:${\int $b_vp9} Kbps, opus:$b_opus Kbps";
+	say $h264 ? "target bitrate was x264:${\int ($b_vp9/1000)} Kbps, aac:$b_opus Kbps":"target bitrate was vp9:${\int ($b_vp9/1000)} Kbps, opus:$b_opus Kbps";
 	say "output file $newfile\nhas a size of ${\( (-s $newfile)/mb)} MB";
 	$b_vp9 = int $b_vp9/1000;
 	`bep` if check_exists_command 'bep';
