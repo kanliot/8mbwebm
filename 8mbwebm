@@ -65,14 +65,12 @@ my $only_get_duration;
 my ($ss, $to);
 GetOptions ('lower-fps=s',\$lower_fps, 'get-fps',\$get_fps,'get-duration',\$only_get_duration, '-mono',\$mono, '-fast',\$preset, 'f', \$preset, 'd=s',\$outdir,'h264',\$h264,'x264',\$h264,  '2',\$h264, '264', \$h264, 'm=f', \$megabytes, 'ss=s', \$ss, 'to=s',\$to, 'size=s',\$size, 's=s', \$size,  'p=s',\$prefix,'pre=s',\$prefix, 'o=s',\$outname, 'h', \$help,'help', \$help) || do { print STDERR "$0 found invalid option\n";exit 1};
 
-say("$progname. Convert any video file to an 8MB .webm"),  Getopt::Long::HelpMessage if $help;
-sub check_exists_command { 
-	my $check = `sh -c 'command -v $_[0]'`; 
-	return $check;
-}
-check_exists_command 'ffmpeg' or die "$0 requires ffmpeg";
-check_exists_command 'mediainfo' or die "$0 requires mediainfo";
-# hmm ffprobe https://superuser.com/questions/841235/how-do-i-use-ffmpeg-to-get-the-video-resolution
+say("$progname. Convert any video file to an 8MB .webm"),  Getopt::Long::HelpMessage if $help or @ARGV < 1;
+
+#check if required programs exist by calling them validly and checking the shell return value (should be 0 if they are present and valid, some other number otherwise)
+!system('ffmpeg -version') or die "$0 requires ffmpeg";
+!system('mediainfo --version') or die "$0 requires mediainfo";
+# hmm maybe replace mediainfo dependency with ffprobe in the future? https://superuser.com/questions/841235/how-do-i-use-ffmpeg-to-get-the-video-resolution
 
 @realtime = () if !$realtime;
 my $multi_pass = !scalar@realtime;
@@ -97,12 +95,14 @@ sub count_lines_in_string {
 }
 #:enew
 #:r !mediainfo --Info-Parameters
-sub quoteforshell {  #adds single quotes i guess it could work like bash's printf %q
-# doesn't relly return an array, just a single string
-# so you pass multiarguments, and it quotes each one, separated by a space.
-#s///gr is return sub, but leave orig untouched
-  return join ' ', map
-      "'" . s/'/'\\''/gr . "'", @_;
+sub quoteforshell { # you pass multiarguments to this, and it quotes each one, separated by a space, and returns a single string
+  #s///gr is return sub, but leave orig untouched
+  return join ' ', map {
+    $^O eq 'MSWin32' ?
+      '"' . s/"/""/gr . '"' #Microsoft Windows cmd quoting convention (also works for powershell)
+      :
+      "'" . s/'/'\\''/gr . "'" #Bash-like shell quoting
+  } @_;
 }
 sub callmediainfov3 { # can return multiple thingies.
 	# basically ( file, group, fields...) 
@@ -310,7 +310,7 @@ elsif (0) {  # this was never useful on files that had bursts of high-bitrates.
 	say $h264 ? "target bitrate was x264:${\int ($b_vp9/1000)} Kbps, aac:$b_opus Kbps":"target bitrate was vp9:${\int ($b_vp9/1000)} Kbps, opus:$b_opus Kbps";
 	say "output file $newfile\nhas a size of ${\( (-s $newfile)/mb)} MB";
 	$b_vp9 = int $b_vp9/1000;
-	`bep` if check_exists_command 'bep';
+	system('bep'); #alert the user the task has finished using a beep. This uses the nonstandard command bep so as to not startle users who haven't explicitly decided they would like sound (if bep isn't on the system, no sound will be produced). bep can be approximated with the following perl script: print "\a";
 	my $newsize = -s $newfile; 
 	if (($newsize / mb) > $megabytes) { 
 		print "$megabytes MB was specified but this size was exceeded!\n";
