@@ -68,8 +68,13 @@ GetOptions ('lower-fps=s',\$lower_fps, 'get-fps',\$get_fps,'get-duration',\$only
 say("$progname. Convert any video file to an 8MB .webm"),  Getopt::Long::HelpMessage if $help or @ARGV < 1;
 
 #check if required programs exist by calling them validly and checking the shell return value (should be 0 if they are present and valid, some other number otherwise)
-!system('ffmpeg -version') or die "$0 requires ffmpeg";
-!system('mediainfo --version') or die "$0 requires mediainfo";
+sub check_exists_command { 
+	`$_[0]`; 
+	return !($?>>8);
+}
+
+check_exists_command('ffmpeg -version') or die "$0 requires ffmpeg";
+check_exists_command('mediainfo --version') or die "$0 requires mediainfo";
 # hmm maybe replace mediainfo dependency with ffprobe in the future? https://superuser.com/questions/841235/how-do-i-use-ffmpeg-to-get-the-video-resolution
 
 @realtime = () if !$realtime;
