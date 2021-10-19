@@ -13,7 +13,9 @@ The main use case is if you want a video shrunk down, and all you know is the si
 I've added a redo mode.  really, 8mbwebm was producing outsized files about 20% of the time.  It currently calculates bitrate as a percent %, but perhaps it should just subtract 600K from the target size, and use that bitrate as a percent.    
 Anyhow, the redo mode is easy to use.  This program asks you if you want to redo,just enter "y". 
 
-I've also decided that my future work on this is to get rid of VP9, and try and make it transparent to systems without lib_fdk and mediainfo installed.   x265 support makes much more sense, and it seems a little bit faster on my system.   Check back in 2-3 months!... it's just that it seems like x265 isn't supported in discord, or on many web platforms, but VP9 is.  Need more info!
+I considered adding x265 support, but since h.265 videos don't embed on discord, I've decided not to add it.   The only planned work is to add better help messages (based on feedback) and to remove the dependency on `mediainfo` since ffprobe is equally effective.  
+
+Thanks [wyattscarpenter](https://github.com/wyattscarpenter) for adding windows support!
 
 ##### Main Options
  *  Fast mode with -f
