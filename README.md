@@ -48,5 +48,5 @@ Thanks [wyattscarpenter](https://github.com/wyattscarpenter) for adding windows 
     default -codec is opus + vp9  ( libvpx-vp9, libopus in ffmpeg) `
 
 **8mbwebm** is a single script with no 'dependencies'.  
-Works on windows when [strawberry perl](https://strawberryperl.com/releases.html) is installed.    
+Works on windows when [strawberry perl](https://strawberryperl.com/releases.html) is installed, and ffmpeg and mediainfo are found in the [PATH](https://superuser.com/questions/903961/why-is-set-path-not-working-in-the-same-batch-file)     
 Should work on BSD, Linux and OSX when [ffmpeg](https://repology.org/project/ffmpeg/versions) and [mediainfo](https://repology.org/project/mediainfo/versions) are installed.
