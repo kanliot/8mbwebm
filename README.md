@@ -45,4 +45,6 @@ I've also decided that my future work on this is to get rid of VP9, and try and 
        -get-duration        print duration in SSSS.ms for each video and exit
     default -codec is opus + vp9  ( libvpx-vp9, libopus in ffmpeg) `
 
-**8mbwebm** is a single script with no 'dependencies'.  Should work on BSD, Linux and OSX when [ffmpeg](https://repology.org/project/ffmpeg/versions) and [mediainfo](https://repology.org/project/mediainfo/versions) are installed.
+**8mbwebm** is a single script with no 'dependencies'.  
+Works on windows when strawberry perl is installed.
+Should work on BSD, Linux and OSX when [ffmpeg](https://repology.org/project/ffmpeg/versions) and [mediainfo](https://repology.org/project/mediainfo/versions) are installed.
